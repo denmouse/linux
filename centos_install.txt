@@ -311,3 +311,23 @@ wget http://www.python.org/ftp/python/2.7.12/Python-2.7.12.tgz
 mkdir /usr/local/python2.7.12
 
 3, 
+
+
+----------------------------------------------------
+git 问题
+
+ 1.  git push origin master 失败
+[dhp@dhpserver smtcrawel]$ git push origin master
+error: The requested URL returned error: 403 Forbidden while accessing https://github.com/denmouse/smtcrawel.git/info/refs
+
+fatal: HTTP request failed
+
+解决办法:
+edit .git/config file under your repo directory
+find url=entry under section [remote "origin"]
+change it from url=https://MichaelDrogalis@github.com/derekerdmann/lunch_call.git to url=ssh://git@github.com/derekerdmann/lunch_call.git. that is, change all the texts before @ symbol to ssh://git
+
+
+2.改完再push 
+Permission denied (publickey).
+fatal: The remote end hung up unexpectedly
