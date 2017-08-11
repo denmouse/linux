@@ -1,0 +1,313 @@
+
+xfce4安装
+1、更新服务器操作系统。
+yum update
+
+2、添加EPEL和IUS软件源。
+yum install epel-release
+
+或者到下面目录下载安装:
+首先去http://dl.fedoraproject.org/pub/epel/6/i386/epel-release-6-8.noarch.rpm
+rpm -Uvh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
+rpm -Uvh http://dl.iuscommunity.org/pub/ius/stable/Redhat/6/i386/ius-release-1.0-10.ius.el6.noarch.rpm
+
+3、安装Xfce。
+yum install xfce-utils xfce4-session xfce4-appfinder xfce4-icon-theme xorg-x11-xinit xorg-x11-drv-fbd
+
+
+---------------------------------------------------
+vncserver 安装
+# yum install tigervnc
+# yum install tigervnc-server
+注意:到生成桌面的用户下运行vncserver,生成密码
+[dhp@centos6 mnt]# vncserver
+You will require a password to access your desktops.
+Password:
+Verify:
+
+打开防火墙端口:
+[root@centos6u2 ~]# vim /etc/sysconfig/iptables
+# then add below line to this file
+-A INPUT -m state --state NEW -m tcp -p tcp --dport 5900:5902 -j ACCEPT
+# restart iptables
+[root@centos6u2 ~]# service iptables restart
+
+不更改/home/dhp/.vnc/xstart配置,只能显示XFCE空白桌面
+
+[ -r /etc/sysconfig/i18n ] && . /etc/sysconfig/i18n
+export LANG
+export SYSFONT
+unset SESSION_MANAGER
+unset DBUS_SESSION_BUS_ADDRESS
+
+exec /bin/sh /etc/xdg/xfce4/xinitrc  //这里是关键,把默认的桌面x11/xinitrc改成指定xfce
+[ -r $HOME/.Xresources ] && xrdb $HOME/.Xresources
+xsetroot -solid grey
+vncconfig -iconic &
+startxfce4              //启动的是xfce4
+
+----------------------------------------------
+samba 安装
+
+yum install samba samba-client samba-swat
+查看安装包: rpm -qa | grep samba
+需要有5个已安装
+
+配置文件: /etc/samba/smb.conf
+ [共享名]
+
+comment = 任意字符串
+说明：comment是对该共享的描述，可以是任意字符串。
+
+path = 共享目录路径
+说 明：path用来指定共享目录的路径。可以用%u、%m这样的宏来代替路径里的unix用户和客户机的Netbios名，用宏表示主要用于[homes] 共享域。例如：如果我们不打算用home段做为客户的共享，而是在/home/share/下为每个Linux用户以他的用户名建个目录，作为他的共享目 录，这样path就可以写成：path = /home/share/%u; 。用户在连接到这共享时具体的路径会被他的用户名代替，要注意这个用户名路径一定要存在，否则，客户机在访问时会找不到网络路径。同样，如果我们不是以用 户来划分目录，而是以客户机来划分目录，为网络上每台可以访问samba的机器都各自建个以它的netbios名的路径，作为不同机器的共享资源，就可以 这样写：path = /home/share/%m 。
+
+browseable = yes/no
+说明：browseable用来指定该共享是否可以浏览。
+
+writable = yes/no
+说明：writable用来指定该共享路径是否可写。
+
+available = yes/no
+说明：available用来指定该共享资源是否可用。
+
+admin users = 该共享的管理者
+说明：admin users用来指定该共享的管理员（对该共享具有完全控制权限）。在samba 3.0中，如果用户验证方式设置成“security=share”时，此项无效。
+例如：admin users =david，sandy（多个用户中间用逗号隔开）。
+
+valid users = 允许访问该共享的用户
+说明：valid users用来指定允许访问该共享资源的用户。
+例如：valid users = david，@dave，@tech（多个用户或者组中间用逗号隔开，如果要加入一个组就用“@组名”表示。）
+
+invalid users = 禁止访问该共享的用户
+说明：invalid users用来指定不允许访问该共享资源的用户。
+例如：invalid users = root，@bob（多个用户或者组中间用逗号隔开。）
+
+write list = 允许写入该共享的用户
+说明：write list用来指定可以在该共享下写入文件的用户。
+例如：write list = david，@dave
+
+public = yes/no
+说明：public用来指定该共享是否允许guest账户访问。
+
+guest ok = yes/no
+说明：意义同“public”。
+ 
+几个特殊共享：
+[homes]
+comment = Home Directories
+browseable = no
+writable = yes
+valid users = %S
+; valid users = MYDOMAIN\%S
+ 
+[printers]
+comment = All Printers
+path = /var/spool/samba
+browseable = no
+guest ok = no
+writable = no
+printable = yes
+ 
+[netlogon]
+comment = Network Logon Service
+path = /var/lib/samba/netlogon
+guest ok = yes
+writable = no
+share modes = no
+ 
+[Profiles]
+path = /var/lib/samba/profiles
+browseable = no
+guest ok = yes
+
+
+生成用户,或使用已有用户:
+useradd -g 组名 用户名
+smbpasswd -a dhp
+
+
+尝试访问:
+# /usr/sbin/smbclient  -L //10.0.0.163/public –U dhp
+
+更改共享目录:
+chown nobody -R /home/dhp/share 
+chmod 777 /home/dhp/share
+
+打开防火墙
+vim /etc/sysconfig/iptables:
+-A INPUT -m state --state NEW -m tcp -p tcp --dport 139 -j ACCEPT
+-A INPUT -m state --state NEW -m tcp -p tcp --dport 445 -j ACCEPT
+-A INPUT -m state --state NEW -m udp -p udp --dport 137 -j ACCEPT
+-A INPUT -m state --state NEW -m udp -p udp --dport 138 -j ACCEPT
+
+配置SELINUx
+#setsebool -P samba_domain_controller on
+#setsebool -P samba_enable_home_dirs on
+# following (read-only/read-write):
+# setsebool -P samba_export_all_ro on
+# or
+# setsebool -P samba_export_all_rw on
+
+smb.conf
+global 中:
+   workgroup = WORKGROUP
+        server string = Samba Server Version %v
+
+        netbios name = DHPSERVER
+   security = user
+        passdb backend = tdbsam
+
+[share]
+        comment = dhpserver file share
+        path = /home/dhp/share
+        writable = yes
+        printable = no
+        valid users = dhp
+        browseable = yes
+        directory mask = 0700
+        guest ok = no
+
+
+-----------------------
+firefox 安装
+yum install firefox
+
+----------------------------------
+deluge 安装
+_
+1.执行以下代码来增加linuxtech的源:
+wget -c -O /etc/yum.repos.d/linuxtech.repo http://pkgrepo.linuxtech.net/el6/release/linuxtech.repo
+
+2.安装deluge
+yum install deluge
+
+ 网速非常慢的解决办法:
+关闭IPV6!!!
+在/etc/modprobe.d/dist.conf结尾添加
+
+alias net-pf-10 off
+alias ipv6 off
+
+
+---------------------------------------------
+minidlna 安装
+yum -y install epel-release
+接着，安装rpm -Uvh http://li.nux.ro/download/nux/dextop/el6/x86_64/nux-dextop-release-0-2.el6.nux.noarch.rpm
+yum install minidlna
+
+/etc/minidlna.conf
+
+media_dir=A,/home/dhp/share/music
+media_dir=V,/home/dhp/share/movie
+media_dir=P,/home/dhp/share/photo
+
+
+防火墙打开8200 udp,tcp
+
+-----------------------------------------
+shadowsock 客户端安装
+1)检查python 版本
+python –version
+
+2)安装 easy_setup
+yum install -y python-setuptools
+
+3) 安装 pip
+easy_install pip
+4)	安装shadowsocks
+pip install shadowsocks
+
+5) vi /etc/shadowsocks.json
+
+{
+    "server":"your_server_ip",
+    "server_port":8989,
+    "local_address": "127.0.0.1",
+    "local_port":1080,
+    "password":"yourpassword",
+    "timeout":600,
+    "method":"aes-256-cfb",
+    "fast_open": false,
+    "workers": 1
+}
+各字段的含义：
+server：服务器 IP (IPv4/IPv6)，注意这也将是服务端监听的 IP 地址
+server_port：监听的服务器端口
+local_address：本地监听的 IP 地址
+local_port：本地端端口
+password：用来加密的密码
+timeout：超时时间（秒）
+method：加密方法，可选择 “bf-cfb”, “aes-256-cfb”, “des-cfb”, “rc4”, 等等。默认是一种不安全的加密，推荐用 “aes-256-cfb”
+fast_open：true 或 false。如果你的服务器 Linux 内核在3.7+，可以开启 fast_open 以降低延迟。开启方法：
+echo 3 > /proc/sys/net/ipv4/tcp_fastopen
+
+开启之后，将 fast_open 的配置设置为 true 即可。
+works：works数量，默认为 1
+
+
+-----------------------
+vlc 媒体播放
+
+For EL6:
+
+rpm -Uvh http://dl.fedoraproject.org/pub/epel/6/i386/epel-release-6-8.noarch.rpm
+rpm -Uvh http://li.nux.ro/download/nux/dextop/el6/x86_64/nux-dextop-release-0-2.el6.nux.noa
+rch.rpm
+Now:
+
+yum update
+yum  install vlc
+
+
+------------------------------
+安装内核源码
+
+1)yum 方法:
+yum -y install kernel-devel kernel-headers   
+手动下载 kernel-headers:  http://mirror.centos.org/centos/6.9/os/x86_64/Packages/kernel-headers-2.6.32-696.el6.x86_64.rpm
+注意:这里安装的是header
+ ubuntu下这样安装:sudo apt-get install linux-headers-$(uname -
+
+2)手动下载内核方法:
+wget https://www.kernel.org/pub/linux/kernel/v2.6/linux-2.6.32.26.tar.bz2
+bzip2 -d linux-2.6.32.26.tar.bz2
+tar -xvf linux-2.6.32.26.tar -C /usr/src/
+没办法安装header
+
+--------------------------
+安装alc662声卡驱动
+1) 先安装内核源码和头
+
+
+2)从Realtek 下载驱动
+http://12244.wpc.azureedge.net/8012244/drivers/rtdrivers/pc/audio/0001-LinuxPkg_5.18rc8.tar.bz2
+解压后,进入到alsa 目录
+./configure --with-cards=hda-intel --with-kernel=/usr/src/kernels/2.6.32-696.6.3.el6.x86_64
+
+make && make install
+
+3) 编译错误解决
+
+	checking for kernel linux/version.h ... no
+        include/linux/version.h' does not exist.
+        内核和头文件没安装好
+
+	include/linux/fs.h:2501: error: expected identifier or ‘(’ before ‘void’
+	include/linux/fs.h:2501: error: expected ‘)’ before numeric constant
+       进入内核文件注释掉
+
+	
+     /alsa/acore/info.c:178: error: conflicting types for ‘PDE_DATA’
+      include/linux/proc_fs.h:330: note: previous definition of ‘PDE_DATA’ was here
+   进头文件proc_fs.h 把该函数注释掉
+
+--------------------------------------------
+升级 python 2.6 -> 2.7
+
+1, 下载python2.7
+wget http://www.python.org/ftp/python/2.7.12/Python-2.7.12.tgz
+2, 新建安装目录
+mkdir /usr/local/python2.7.12
+
+3, 
